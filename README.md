@@ -1,5 +1,38 @@
 # localtunnel-server
 
+## HOW TO RUN ##
+1 - Setup DNS to point `*.tunnel.example.com` and `tunnel.example.com` at the reverse proxy and setup reverse proxy `wildcard`
+
+2 - Setup reverse proxy connection map like the following (NGINX specific)
+```
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+```
+3 - Setup reverse proxy location like the following
+```
+location / {
+        proxy_pass http://127.0.0.1:1234/;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto http;
+        proxy_set_header X-NginX-Proxy true;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        proxy_redirect off;
+    }
+```
+4 - npm install and run (DEBUG=* is optional)
+```
+npm install
+DEBUG=* node -r esm ./bin/server --port 1234 --domain tunnel.example.com
+```
+5 - open all the hight level ports on the server to be used by the tunnel
+
 [![Build Status](https://travis-ci.org/localtunnel/server.svg?branch=master)](https://travis-ci.org/localtunnel/server)
 
 localtunnel exposes your localhost to the world for easy testing and sharing! No need to mess with DNS or deploy just to have others test out your changes.
