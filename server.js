@@ -7,7 +7,7 @@ import { hri } from 'human-readable-ids';
 import Router from 'koa-router';
 
 import ClientManager from './lib/ClientManager';
-import Auth from './lib/auth'
+import Auth from './lib/Auth'
 
 const debug = Debug('localtunnel:server');
 
