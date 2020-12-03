@@ -7,6 +7,7 @@ import { hri } from 'human-readable-ids';
 import Router from 'koa-router';
 
 import ClientManager from './lib/ClientManager';
+import Auth from './lib/auth'
 
 const debug = Debug('localtunnel:server');
 
@@ -63,14 +64,31 @@ export default function(opt) {
             return;
         }
 
+        //check for proof-of-work
+        //
+
         const isNewClientRequest = ctx.query['new'] !== undefined;
         if (isNewClientRequest) {
             const reqId = hri.random();
+
+            // create token
+            let token = ''
+            try {
+                token = await Auth.generateToken(reqId)
+            } catch(err) {
+                ctx.status = 401
+                ctx.body = {
+                    message: err.message || err,
+                };
+                return;
+            }
+
             debug('making new client with id %s', reqId);
             const info = await manager.newClient(reqId);
 
             const url = schema + '://' + info.id + '.' + ctx.request.host;
             info.url = url;
+            info.token = token
             ctx.body = info;
             return;
         }
@@ -83,6 +101,7 @@ export default function(opt) {
     // This is a backwards compat feature
     app.use(async (ctx, next) => {
         const parts = ctx.request.path.split('/');
+        const token = ctx.request.headers["x-shock-tunnel-token-x"]
 
         // any request with several layers of paths is not allowed
         // rejects /foo/bar
@@ -100,6 +119,24 @@ export default function(opt) {
             ctx.status = 403;
             ctx.body = {
                 message: msg,
+            };
+            return;
+        }
+        // check token
+        if(!token){
+            const msg = 'No token provided.';
+            ctx.status = 401
+            ctx.body = {
+                message: msg,
+            };
+            return;
+        }
+        try {
+            await Auth.validateToken(token,reqId)
+        }catch(err){
+            ctx.status = 401
+            ctx.body = {
+                message: err.message || err,
             };
             return;
         }
